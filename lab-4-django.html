@@ -482,6 +482,112 @@ touch polls/templates/polls/index.html
 
 
 <p><strong>Question 8</strong>: What are the benefits of using Django's generic views over writing views 'the hard way'? When should you use a generic view and when shouldn't you use a generic view?</p>
+
+<hr>
+
+<h3 id="serializing-and-deserializing-queries">Serializing and Deserializing Queries (Optional, but strongly recommended to do)</h3>
+<p>Based from the DRF (Django Rest Framework) tutorial <a href="https://www.django-rest-framework.org/tutorial/1-serialization/">here</a></p>
+<p>To convert your queries to or from a JSON object you can use Django’s serializers to serialize or deserialize Django QuerySets to or from JSON objects.</p>
+<p>First install the Django Rest Framework library using <code>pip</code></p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><a class="sourceLine" id="cb1-1" title="1"><span class="ex">pip</span> install djangorestframework</a></code></pre></div>
+<p>Then add the <code>rest_framework</code> app to <code>INSTALLED_APPS</code> in our <code>mysite/settings.py</code> file</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb2-1" title="1">INSTALLED_APPS <span class="op">=</span> [</a>
+<a class="sourceLine" id="cb2-2" title="2">    ...</a>
+<a class="sourceLine" id="cb2-3" title="3">    <span class="st">&#39;rest_framework&#39;</span></a>
+<a class="sourceLine" id="cb2-4" title="4">]</a></code></pre></div>
+<h4 id="creating-a-serializer-class">Creating a Serializer Class</h4>
+<p>Create a file in the <code>polls</code> directory named <code>serializers.py</code> and add the following</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb3-1" title="1"><span class="im">from</span> rest_framework <span class="im">import</span> serializers</a>
+<a class="sourceLine" id="cb3-2" title="2"><span class="im">from</span> .models <span class="im">import</span> Question</a>
+<a class="sourceLine" id="cb3-3" title="3"></a>
+<a class="sourceLine" id="cb3-4" title="4"><span class="kw">class</span> QuestionSerializer(serializers.Serializer):</a>
+<a class="sourceLine" id="cb3-5" title="5">    question_text <span class="op">=</span> serializers.CharField()</a>
+<a class="sourceLine" id="cb3-6" title="6">    pub_date <span class="op">=</span> serializers.DateTimeField()</a>
+<a class="sourceLine" id="cb3-7" title="7"></a>
+<a class="sourceLine" id="cb3-8" title="8">    <span class="kw">def</span> create(<span class="va">self</span>, validated_data):</a>
+<a class="sourceLine" id="cb3-9" title="9">        <span class="co">&quot;&quot;&quot;</span></a>
+<a class="sourceLine" id="cb3-10" title="10"><span class="co">        Create and return a new `Question` instance, given the validated data</span></a>
+<a class="sourceLine" id="cb3-11" title="11"><span class="co">        &quot;&quot;&quot;</span></a>
+<a class="sourceLine" id="cb3-12" title="12">        <span class="cf">return</span> Question.<span class="bu">object</span>.create(<span class="op">**</span>validated_data)</a>
+<a class="sourceLine" id="cb3-13" title="13">    </a>
+<a class="sourceLine" id="cb3-14" title="14">    <span class="kw">def</span> update(<span class="va">self</span>, instance, validated_data):</a>
+<a class="sourceLine" id="cb3-15" title="15">        <span class="co">&quot;&quot;&quot;</span></a>
+<a class="sourceLine" id="cb3-16" title="16"><span class="co">        Update and return an existing `Question` instance, given the validated data</span></a>
+<a class="sourceLine" id="cb3-17" title="17"><span class="co">        &quot;&quot;&quot;</span></a>
+<a class="sourceLine" id="cb3-18" title="18">        instance.question_text <span class="op">=</span> validated_data.get(<span class="st">&#39;question_text&#39;</span>, instance.question_text)</a>
+<a class="sourceLine" id="cb3-19" title="19">        instance.pub_date <span class="op">=</span> validated_data.get(<span class="st">&#39;pub_date&#39;</span>, instance.pub_date)</a>
+<a class="sourceLine" id="cb3-20" title="20">        instance.save()</a>
+<a class="sourceLine" id="cb3-21" title="21">        <span class="cf">return</span> instance</a></code></pre></div>
+<h4 id="update-our-views-using-our-serializer">Update our views using our Serializer</h4>
+<p>Once you have the serializers you now need to write some API views using the new Serializer class</p>
+<p>Edit the <code>polls/views.py</code> file, and add the following</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb4-1" title="1"><span class="im">from</span> rest_framework.decorators <span class="im">import</span> api_view</a>
+<a class="sourceLine" id="cb4-2" title="2"><span class="im">from</span> rest_framework.response <span class="im">import</span> Response</a>
+<a class="sourceLine" id="cb4-3" title="3"><span class="im">from</span> .serializers <span class="im">import</span> QuestionSerializer</a>
+<a class="sourceLine" id="cb4-4" title="4"></a>
+<a class="sourceLine" id="cb4-5" title="5">...</a>
+<a class="sourceLine" id="cb4-6" title="6"></a>
+<a class="sourceLine" id="cb4-7" title="7"></a>
+<a class="sourceLine" id="cb4-8" title="8"><span class="at">@api_view</span>([<span class="st">&#39;GET&#39;</span>])</a>
+<a class="sourceLine" id="cb4-9" title="9"><span class="kw">def</span> get_questions(request):</a>
+<a class="sourceLine" id="cb4-10" title="10">    <span class="co">&quot;&quot;&quot;</span></a>
+<a class="sourceLine" id="cb4-11" title="11"><span class="co">    Get the list of questions on our website</span></a>
+<a class="sourceLine" id="cb4-12" title="12"><span class="co">    &quot;&quot;&quot;</span></a>
+<a class="sourceLine" id="cb4-13" title="13">    questions <span class="op">=</span> Question.objects.<span class="bu">all</span>()</a>
+<a class="sourceLine" id="cb4-14" title="14">    serializer <span class="op">=</span> QuestionSerializer(questions, many<span class="op">=</span><span class="va">True</span>)</a>
+<a class="sourceLine" id="cb4-15" title="15">    <span class="cf">return</span> Response(serializer.data)</a></code></pre></div>
+<p>The <code>@api_view</code> decorator will wrap the view so that only HTTP methods that are listed in the decorator will get executed.</p>
+<h4 id="updating-the-our-urls-for-the-new-views">Updating the our URLs for the new views</h4>
+<p>Because we want our API responses to have JSON objects we will have to add another set of urls with a <code>api/</code> prefix to our <code>polls/urls.py</code> file.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb5-1" title="1"><span class="im">from</span> django.urls <span class="im">import</span> path</a>
+<a class="sourceLine" id="cb5-2" title="2"><span class="im">from</span> . <span class="im">import</span> views</a>
+<a class="sourceLine" id="cb5-3" title="3"></a>
+<a class="sourceLine" id="cb5-4" title="4">urlpatterns <span class="op">=</span> [</a>
+<a class="sourceLine" id="cb5-5" title="5">    ...</a>
+<a class="sourceLine" id="cb5-6" title="6">    path(<span class="st">&#39;api/questions/&#39;</span>, views.get_questions, name<span class="op">=</span><span class="st">&#39;get_questions&#39;</span>),</a>
+<a class="sourceLine" id="cb5-7" title="7">]</a></code></pre></div>
+<p>Now run the project again with the <code>runserver</code> command and go to <code>polls/api/questions/</code></p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><a class="sourceLine" id="cb6-1" title="1"><span class="ex">python</span> manage.py runserver</a></code></pre></div>
+<p>You should see a list of question in a json format.</p>
+<h4 id="updating-a-question-using-our-serializer">Updating a Question Using our Serializer</h4>
+<p>We can use the serializer to update the <code>question_text</code> field of our question entries.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb7-1" title="1"><span class="at">@api_view</span>([<span class="st">&#39;POST&#39;</span>])</a>
+<a class="sourceLine" id="cb7-2" title="2"><span class="kw">def</span> update_question(request, pk):</a>
+<a class="sourceLine" id="cb7-3" title="3">    <span class="co">&quot;&quot;&quot;</span></a>
+<a class="sourceLine" id="cb7-4" title="4"><span class="co">    Get the list of questions on our website</span></a>
+<a class="sourceLine" id="cb7-5" title="5"><span class="co">    &quot;&quot;&quot;</span></a>
+<a class="sourceLine" id="cb7-6" title="6">    questions <span class="op">=</span> Question.objects.get(<span class="bu">id</span><span class="op">=</span>pk)</a>
+<a class="sourceLine" id="cb7-7" title="7">    serializer <span class="op">=</span> QuestionSerializer(questions, data<span class="op">=</span>request.data, partial<span class="op">=</span><span class="va">True</span>)</a>
+<a class="sourceLine" id="cb7-8" title="8">    <span class="cf">if</span> serializer.is_valid():</a>
+<a class="sourceLine" id="cb7-9" title="9">        <span class="cf">return</span> Response(serializer.data)</a>
+<a class="sourceLine" id="cb7-10" title="10">    <span class="cf">return</span> Response(status<span class="op">=</span><span class="dv">400</span>, data<span class="op">=</span>serializer.errors)</a></code></pre></div>
+<p>and update the <code>polls/urls.py</code> file.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb8-1" title="1"><span class="im">from</span> django.urls <span class="im">import</span> path</a>
+<a class="sourceLine" id="cb8-2" title="2"><span class="im">from</span> . <span class="im">import</span> views</a>
+<a class="sourceLine" id="cb8-3" title="3"></a>
+<a class="sourceLine" id="cb8-4" title="4">urlpatterns <span class="op">=</span> [</a>
+<a class="sourceLine" id="cb8-5" title="5">    ...</a>
+<a class="sourceLine" id="cb8-6" title="6">    path(<span class="st">&#39;api/question/&lt;int:pk&gt;&#39;</span>, views.update_question, name<span class="op">=</span><span class="st">&#39;update_question&#39;</span>),</a>
+<a class="sourceLine" id="cb8-7" title="7">]</a></code></pre></div>
+<p>Run the project using <code>runserver</code> and go to this link <code>polls/api/question/1</code> and POST the following information below.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode json"><code class="sourceCode json"><a class="sourceLine" id="cb9-1" title="1"><span class="fu">{</span></a>
+<a class="sourceLine" id="cb9-2" title="2">    <span class="dt">&quot;question_text&quot;</span><span class="fu">:</span> <span class="st">&quot;Updated question text&quot;</span></a>
+<a class="sourceLine" id="cb9-3" title="3"><span class="fu">}</span></a></code></pre></div>
+<p>After clicking the POST button you should see the updated value in the json structure above. The new value should also be reflected in the model admin page as well.</p>
+<h4 id="other-cool-things-to-know">Other cool things to know</h4>
+<ul>
+<li>If your serializer is replicating a lot of information that’s also contained in the model being (de)serialized then you can use the <code>ModelSerializer</code> class to automatically generate the fields and produce a simple default implementations for the <code>create()</code> and <code>update()</code> methods</li>
+<li>If you want to support alternative serialization and deserialization styles then you can inherit the <code>BaseSerializer</code> class and override these four functions depending on what functionality you want the serializer class to support:
+<ul>
+<li><code>.to_representation()</code> - Override this to support serialization, for read operations</li>
+<li><code>.to_internal_value()</code> - Override this to support deserialization, for write operations</li>
+<li><code>.create()</code> and <code>.update()</code> - Override either or both of these to support saving instances.</li>
+</ul></li>
+</ul>
+<h4 id="more-information-about-drf">More information about DRF</h4>
+<p>Her is the <a href="https://www.django-rest-framework.org/api-guide/serializers/">API Guide for Serializers</a></p>
+<p>Here is the <a href="https://www.django-rest-framework.org/tutorial/1-serialization/">Tutorial guide</a></p>
+<hr>
 <h3>Optional/Outside of Lab</h3>
 <p>It is in your best interest to Work through the rest of Django's First Steps Tutorials:</p>
 <ul>
